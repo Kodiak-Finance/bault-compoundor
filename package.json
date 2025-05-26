@@ -1,0 +1,23 @@
+{
+    "name": "bault-compoundor",
+    "version": "1.0.0",
+    "description": "Simple scripts for compounding Baults",
+    "type": "module",
+    "scripts": {
+        "compound": "bun run src/simpleCompoundor.ts",
+        "build": "tsc",
+        "clean": "rm -rf dist",
+        "compound:node": "npm run build && node dist/simpleCompoundor.js"
+    },
+    "main": "dist/simpleCompoundor.js",
+    "dependencies": {
+        "pm2": "^6.0.5",
+        "viem": "^2.22.9"
+    },
+    "devDependencies": {
+        "@types/node": "^18.15.11",
+        "bun-types": "latest",
+        "tsx": "^4.19.4",
+        "typescript": "^5.0.4"
+    }
+}
