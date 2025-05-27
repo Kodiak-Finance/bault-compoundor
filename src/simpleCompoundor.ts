@@ -8,7 +8,7 @@ import { ERC20_ABI } from "./abis/ERC20";
 import { PRIVATE_KEY, BOUNTY_HELPER_ADDRESS, BENEFICIARY_ADDRESS, CHAIN_ID, RPC_URL, COMPOUND_SLIPPAGE_BPS, MAX_COMPOUND_SLIPPAGE_BPS, SLIPPAGE_INCREMENT_PER_RETRY, MAX_RETRIES, RETRY_INTERVAL, LOOP_INTERVAL } from "./configuration";
 import { BaultOnChainData, CompoundResult, RetryInfo } from "./types";
 
-// Result collection for final reporting
+/** Result tracking for individual bault processing operations */
 interface BaultProcessingResult {
     bault: string;
     status: 'success' | 'failed' | 'skipped';
@@ -18,21 +18,23 @@ interface BaultProcessingResult {
     excessTokensReceived?: bigint;
 }
 
-// Explorer URL for transaction links
+/** Berascan explorer URL for transaction links */
 const EXPLORER_URL = "https://berascan.com/tx";
 
+// Initialize blockchain clients
 let publicClient = createPublicClient({ chain: berachain, transport: http(RPC_URL) });
 let walletClient = PRIVATE_KEY ? createWalletClient({ account: privateKeyToAccount(PRIVATE_KEY), chain: berachain, transport: http(RPC_URL) }) : null;
 let account = PRIVATE_KEY ? privateKeyToAccount(PRIVATE_KEY) : null;
 
-// Track retries and original BGT amounts to detect if someone else compounded
+/** Track retry attempts and original BGT amounts to detect external compounds */
 const retryMap: Record<string, RetryInfo> = {};
 
 /**
- * Attempts to compound a bault
- * @param baultData Bault data from the chain
- * @param retries Number of retry attempts so far
- * @returns Status of the compounding attempt
+ * Attempts to compound a single bault with retry logic and slippage management
+ * Handles transaction simulation, execution, and result tracking
+ * @param baultData - Complete on-chain data for the bault to compound
+ * @param retries - Current retry attempt number
+ * @returns Result of the compound attempt with status and transaction details
  */
 async function tryCompound({ stakingToken, bault, bounty, earnedBgt, wrapper, wrapperMintAmount, wrapperValueInStakingToken }: BaultOnChainData, retries: number): Promise<CompoundResult> {
     // If retrying, check if someone else already compounded
@@ -55,7 +57,7 @@ async function tryCompound({ stakingToken, bault, bounty, earnedBgt, wrapper, wr
         }
     }
     let beneficiaryAddress = BENEFICIARY_ADDRESS;
-    if(beneficiaryAddress === ''){ // TO safe guard from bad config
+    if(beneficiaryAddress === '' as Address){ // TO safe guard from bad config
         if(!account){
             throw new Error('No account found, please set PRIVATE_KEY in .env');
         }
@@ -93,8 +95,8 @@ async function tryCompound({ stakingToken, bault, bounty, earnedBgt, wrapper, wr
             slippage,
             false
         );
-    } catch (e) {
-        return { status: 'fail', tx: null, error: `Enso quote failed: ${e.message || ''}` };
+    } catch (e: any) {
+        return { status: 'fail', tx: null, error: `Enso quote failed: ${e?.message || 'Unknown error'}` };
     }
     if (!quote || !quote.tx || !quote.amountOut) return { status: 'fail', tx: null, error: 'No valid Enso quote' };
     if (BigInt(quote.amountOut) < bounty) return { status: 'fail', tx: null, error: `Quote (${quote.amountOut}) less than bounty (${bounty})` };
@@ -118,8 +120,8 @@ async function tryCompound({ stakingToken, bault, bounty, earnedBgt, wrapper, wr
             maxFeePerGas: maxFee,
             maxPriorityFeePerGas: priorityFee
         });
-    } catch (e) {
-        return { status: 'fail', tx: null, error: `Compound Simulation failed: ${e.message || ''}` };
+    } catch (e: any) {
+        return { status: 'fail', tx: null, error: `Compound Simulation failed: ${e?.message || 'Unknown error'}` };
     }
 
     if (!simulationResult || !simulationResult.request) return { status: 'fail', tx: null, error: 'Simulation failed' };
@@ -152,13 +154,15 @@ async function tryCompound({ stakingToken, bault, bounty, earnedBgt, wrapper, wr
         }
 
         return { status: 'fail', tx: txHash, error: 'Transaction reverted' };
-    } catch (e) {
-        return { status: 'fail', tx: null, error: `Transaction failed: ${e.message || ''}` };
+    } catch (e: any) {
+        return { status: 'fail', tx: null, error: `Transaction failed: ${e?.message || 'Unknown error'}` };
     }
 }
 
 /**
- * Main processing loop for compounding baults
+ * Main processing loop for the bault compoundoor service
+ * Fetches bault data, filters eligible baults, processes compounds, and reports results
+ * Handles parallel data fetching and sequential transaction processing for nonce management
  */
 async function mainLoop() {
     const startTime = Date.now();
@@ -296,7 +300,9 @@ async function mainLoop() {
 }
 
 /**
- * Start the compoundoor service
+ * Starts the bault compoundoor service
+ * Runs the main processing loop continuously with configured intervals
+ * Handles errors gracefully and continues operation
  */
 async function start() {
     console.log(`Service started.`);
@@ -311,4 +317,5 @@ async function start() {
     }
 }
 
+// Start the service if this file is run directly
 if (require.main === module) start();

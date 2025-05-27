@@ -1,15 +1,21 @@
-import { PublicClient, Address, parseAbi, getContract, getAddress, formatUnits, parseEther } from "viem";
-import { CHAIN_ID, COMPOUND_SLIPPAGE_BPS, YBGT, LBGT, iBGT, BOUNTY_HELPER_ADDRESS, KODIAK_STAGING_BAULTS_API_URL, MIN_EARNINGS_BGT } from "./configuration";
+import { PublicClient, Address, parseAbi, getContract, getAddress, formatUnits, parseEther, zeroAddress } from "viem";
+import { CHAIN_ID, COMPOUND_SLIPPAGE_BPS, YBGT, LBGT, iBGT, BOUNTY_HELPER_ADDRESS, KODIAK_STAGING_BAULTS_API_URL, MIN_EARNINGS_BGT, ONLY_ALLOW_DEFAULT_WRAPPER, DEFAULT_BGT_WRAPPER_ADDRESS } from "./configuration";
 import { getEnsoQuote } from "./EnsoQuoter";
 import { BaultOnChainData, BaultFromKodiakBackend } from "./types";
 
+/** ABI for Bault contract interactions */
 export const BAULT_ABI = parseAbi([
   "function bounty() external view returns (uint256)",
-  "function asset() external view returns (address)", // ERC4626 standard for underlying token
+  "function asset() external view returns (address)",
   "function earned() external view returns (uint256)",
   "function previewClaimBgtWrapper(address bgtWrapper) external view returns (uint256)",
+  "function onlyAllowedBgtWrapper() external view returns (address)",
 ]);
 
+/**
+ * Fetches bault data from Kodiak backend API
+ * @returns Array of bault information from backend
+ */
 async function getBaultsFromKodiakBackend(): Promise<BaultFromKodiakBackend[]> {
   const response = await fetch(KODIAK_STAGING_BAULTS_API_URL);
   const responseData = await response.json();
@@ -25,7 +31,14 @@ async function getBaultsFromKodiakBackend(): Promise<BaultFromKodiakBackend[]> {
   }, []);
 }
 
-// --- Utils to get the best wrapper for a bault ---
+/**
+ * Calculates the value of a BGT wrapper token in terms of the staking token
+ * Uses Enso DEX aggregator to get swap quotes
+ * @param wrapper - BGT wrapper contract address
+ * @param stakingToken - Target staking token address
+ * @param inputAmount - Amount of wrapper tokens to value
+ * @returns String representation of output amount in staking token
+ */
 export async function checkWrapperValueInStakingToken(
   wrapper: `0x${string}`,
   stakingToken: `0x${string}`,
@@ -49,6 +62,15 @@ export async function checkWrapperValueInStakingToken(
   return quote.amountOut;
 }
 
+/**
+ * Finds the most profitable BGT wrapper for a given bault
+ * Compares yBGT, lBGT, and iBGT to determine which provides the best value
+ * @param baultAddress - Address of the bault contract
+ * @param stakingToken - Address of the underlying staking token
+ * @param publicClient - Viem public client for blockchain calls
+ * @param wrappers - Array of wrapper addresses to compare (defaults to [YBGT, LBGT, iBGT])
+ * @returns Best wrapper info or undefined if none found
+ */
 export async function findBestWrapper(
   baultAddress: Address,
   stakingToken: Address,
@@ -111,12 +133,12 @@ export async function findBestWrapper(
     return undefined;
   }
 }
-// -------------------------------------------------
 
 /**
- * Fetches on-chain data for all baults with optimized parallel execution
- * @param publicClient Client to use for on-chain calls
- * @returns Array of bault data with on-chain information
+ * Fetches comprehensive on-chain data for all baults with optimized parallel execution
+ * Includes bounty amounts, earned BGT, and best wrapper analysis
+ * @param publicClient - Viem public client for blockchain interactions
+ * @returns Array of bault data with complete on-chain information
  */
 export async function getBaultsOnChainData(publicClient: PublicClient): Promise<BaultOnChainData[]> {
   // Fetch baults list
@@ -131,9 +153,10 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
           abi: BAULT_ABI,
           client: publicClient,
         });
-        const [bounty, earnedBgt] = await Promise.all([
+        const [bounty, earnedBgt, onlyAllowedBgtWrapper] = await Promise.all([
           baultContract.read.bounty(),
           baultContract.read.earned(),
+          baultContract.read.onlyAllowedBgtWrapper()
         ]);
 
         return {
@@ -142,6 +165,7 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
           symbol,
           bounty,
           earnedBgt,
+          onlyAllowedBgtWrapper
         };
       } catch (error) {
         return {
@@ -150,6 +174,7 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
           symbol,
           bounty: 0n,
           earnedBgt: 0n,
+          onlyAllowedBgtWrapper: zeroAddress,
           error: "Error fetching onchain data",
         };
       }
@@ -170,16 +195,36 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
 
   // Separate valid baults (no errors) for wrapper processing
   const validBaults = allBaults.filter((baultData) => !baultData.error) as (Omit<BaultOnChainData, 'wrapper' | 'wrapperMintAmount' | 'wrapperValueInStakingToken' | 'error'>)[];
+  // Filter baults based on wrapper compatibility when ONLY_ALLOW_DEFAULT_WRAPPER is true
+  const compatibleBaults = validBaults.filter(({ onlyAllowedBgtWrapper }) => {
+    if (!ONLY_ALLOW_DEFAULT_WRAPPER) {
+      return true; // Allow all baults when not restricting to default wrapper
+    }
 
-  // Then, fetch all best wrappers in parallel for valid baults
-  const wrapperPromises = validBaults.map(({ bault, stakingToken }) =>
-    findBestWrapper(bault, stakingToken, publicClient)
-  );
+    // When ONLY_ALLOW_DEFAULT_WRAPPER is true:
+    // - Allow baults with no restriction (zeroAddress)
+    // - Allow baults that specifically require our DEFAULT_BGT_WRAPPER_ADDRESS
+    // - Skip baults that require a different wrapper
+    return onlyAllowedBgtWrapper === zeroAddress ||
+      onlyAllowedBgtWrapper.toLowerCase() === DEFAULT_BGT_WRAPPER_ADDRESS.toLowerCase();
+  });
+
+  // Then, fetch all best wrappers in parallel for compatible baults
+  const wrapperPromises = compatibleBaults.map(({ bault, stakingToken, onlyAllowedBgtWrapper }) => {
+    if (onlyAllowedBgtWrapper === zeroAddress) {
+      if (ONLY_ALLOW_DEFAULT_WRAPPER) {
+        return findBestWrapper(bault, stakingToken, publicClient, [DEFAULT_BGT_WRAPPER_ADDRESS]);
+      }
+      return findBestWrapper(bault, stakingToken, publicClient);
+    } else {
+      return findBestWrapper(bault, stakingToken, publicClient, [DEFAULT_BGT_WRAPPER_ADDRESS]);
+    }
+  });
 
   const bestWrappers = await Promise.all(wrapperPromises);
 
-  // Combine valid baults with wrapper data
-  const validBaultsWithWrappers = validBaults.map((baultData, index) => {
+  // Combine compatible baults with wrapper data
+  const compatibleBaultsWithWrappers = compatibleBaults.map((baultData, index) => {
     const wrapper = bestWrappers[index];
     if (!wrapper) {
       return {
@@ -199,9 +244,25 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
     };
   });
 
-  // Combine all baults (failed ones and valid ones with wrapper data)
+  // Mark incompatible baults as having wrapper incompatibility error
+  const incompatibleBaults = validBaults
+    .filter(({ onlyAllowedBgtWrapper }) => {
+      if (!ONLY_ALLOW_DEFAULT_WRAPPER) return false;
+      return onlyAllowedBgtWrapper !== zeroAddress &&
+        onlyAllowedBgtWrapper.toLowerCase() !== DEFAULT_BGT_WRAPPER_ADDRESS.toLowerCase();
+    })
+    .map((baultData) => ({
+      ...baultData,
+      wrapper: "0x0000000000000000000000000000000000000000" as Address,
+      wrapperMintAmount: 0n,
+      wrapperValueInStakingToken: 0n,
+      error: `Wrapper incompatibility: Bault ${baultData.symbol} requires ${baultData.onlyAllowedBgtWrapper}, but compoundor only allows ${DEFAULT_BGT_WRAPPER_ADDRESS}`,
+    }));
+
+
+  // Combine all baults (failed ones, incompatible ones, and compatible ones with wrapper data)
   const results = allBaults.map((baultData) => {
-    if (baultData.error) {
+    if (baultData.error) { // failed in fetching onchain data itself.
       // Return failed bault with placeholder wrapper data
       return {
         ...baultData,
@@ -210,15 +271,27 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
         wrapperValueInStakingToken: 0n,
       };
     }
-    // Find corresponding valid bault with wrapper data
-    return validBaultsWithWrappers.find((validBault) => validBault.bault === baultData.bault)!;
+    // Check if this is an incompatible bault
+    const incompatible = incompatibleBaults.find((incompatibleBault) => incompatibleBault.bault === baultData.bault);
+    if (incompatible) {
+      return incompatible;
+    }
+
+    // Find corresponding compatible bault with wrapper data
+    return compatibleBaultsWithWrappers.find((compatibleBault) => compatibleBault.bault === baultData.bault)!;
   });
 
   return results as BaultOnChainData[];
 }
 
-
-// Better formatting function for readable decimal display
+/**
+ * Formats token amounts into human-readable strings with appropriate units
+ * Handles large numbers with K/M suffixes and small numbers with scientific notation
+ * @param amount - Token amount as bigint
+ * @param decimals - Token decimal places (default: 18)
+ * @param smallNumberSignificantDigits - Significant digits for small numbers (default: 2)
+ * @returns Formatted string representation
+ */
 export function formatReadableAmount(amount: bigint, decimals: number = 18, smallNumberSignificantDigits: number = 2): string {
   const value = Number(formatUnits(amount, decimals));
 
@@ -248,6 +321,12 @@ export function formatReadableAmount(amount: bigint, decimals: number = 18, smal
   return value.toExponential(2);
 }
 
+/**
+ * Calculates the percentage of bounty that the reward represents
+ * @param rewardValue - Value of the reward in wei
+ * @param bounty - Required bounty amount in wei
+ * @returns Formatted percentage string
+ */
 export function calculateBountyPercentage(rewardValue: bigint, bounty: bigint): string {
   if (bounty === 0n) return "0%";
   const percentage = (Number(rewardValue) / Number(bounty)) * 100;

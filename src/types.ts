@@ -6,6 +6,7 @@ export type BaultOnChainData = {
     symbol: string;
     bounty: bigint;
     earnedBgt: bigint;
+    onlyAllowedBgtWrapper: Address;
     wrapper: Address;
     wrapperMintAmount: bigint;
     wrapperValueInStakingToken: bigint;
