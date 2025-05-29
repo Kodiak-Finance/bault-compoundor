@@ -16,8 +16,8 @@ const getEnvVar = (key: string): string | undefined => {
 
 // API Configuration
 /** Kodiak backend API endpoint for fetching bault data */
-export const KODIAK_STAGING_BAULTS_API_URL =
-  "https://staging.backend.kodiak.finance/vaults?withBaults=true"; // Use staging for now
+export const KODIAK_BAULTS_API_URL =
+  "https://backend.kodiak.finance/vaults?withBaults=true";
 
 // Network Configuration
 export const CHAIN_ID = 80094;
@@ -55,7 +55,7 @@ export const SLIPPAGE_INCREMENT_PER_RETRY = 15;
 
 // Bot Operation Configuration
 /** Minimum BGT earnings required to attempt compounding */
-export const MIN_EARNINGS_BGT = "0.3";
+export const MIN_EARNINGS_BGT = "1.5";
 /** Interval between main loop executions in milliseconds */
 export const LOOP_INTERVAL = 30 * 1000;
 /** Delay between retry attempts in milliseconds */

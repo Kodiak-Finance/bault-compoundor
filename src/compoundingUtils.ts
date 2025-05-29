@@ -1,5 +1,5 @@
 import { PublicClient, Address, parseAbi, getContract, getAddress, formatUnits, parseEther, zeroAddress } from "viem";
-import { CHAIN_ID, COMPOUND_SLIPPAGE_BPS, YBGT, LBGT, iBGT, BOUNTY_HELPER_ADDRESS, KODIAK_STAGING_BAULTS_API_URL, MIN_EARNINGS_BGT, ONLY_ALLOW_DEFAULT_WRAPPER, DEFAULT_BGT_WRAPPER_ADDRESS } from "./configuration";
+import { CHAIN_ID, COMPOUND_SLIPPAGE_BPS, YBGT, LBGT, iBGT, BOUNTY_HELPER_ADDRESS, KODIAK_BAULTS_API_URL, MIN_EARNINGS_BGT, ONLY_ALLOW_DEFAULT_WRAPPER, DEFAULT_BGT_WRAPPER_ADDRESS } from "./configuration";
 import { getEnsoQuote } from "./EnsoQuoter";
 import { BaultOnChainData, BaultFromKodiakBackend } from "./types";
 
@@ -17,7 +17,7 @@ export const BAULT_ABI = parseAbi([
  * @returns Array of bault information from backend
  */
 async function getBaultsFromKodiakBackend(): Promise<BaultFromKodiakBackend[]> {
-  const response = await fetch(KODIAK_STAGING_BAULTS_API_URL);
+  const response = await fetch(KODIAK_BAULTS_API_URL);
   const responseData = await response.json();
   return responseData.data.reduce((acc: BaultFromKodiakBackend[], island: any) => {
     if (island.provider === "kodiak" && island.id && island.baults.length > 0) {

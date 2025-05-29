@@ -23,7 +23,7 @@ The bot runs in a loop and:
 
 1. Copy `.env.example` to `.env` and fill in:
    - `RPC_URL` - Your Berachain RPC
-   - `ENSO_API_KEY` - Your Enso API key
+   - `ENSO_API_KEY` - Your Enso API key. Generate one here - https://shortcuts.enso.finance/developers
    - `PRIVATE_KEY` - Bot wallet private key
 
 2. Install dependencies:
@@ -32,7 +32,6 @@ The bot runs in a loop and:
    # or
    npm install
    ```
-
 ## Run
 
 ```bash
@@ -55,4 +54,6 @@ Edit `src/configuration.ts` to change:
 - `LOOP_INTERVAL` - How often to check (default: 30 seconds)
 - `COMPOUND_SLIPPAGE_BPS` - Slippage tolerance (default: 20 = 0.2%)
 - `MAX_RETRIES` - Retry failed transactions (default: 3)
-- `BENEFICIARY_ADDRESS` - Where excess tokens go
+- `BENEFICIARY_ADDRESS` - Where earned tokens go.
+- `DEFAULT_BGT_WRAPPER_ADDRESS` - The wrapped BGT to default to in case the bot is not able to determine the best wrapper to claim dynamically.
+- `ONLY_ALLOW_DEFAULT_WRAPPER` - Set this to true, in case you only want to allow claiming using the `DEFAULT_BGT_WRAPPER_ADDRESS` instead of finding the best.
