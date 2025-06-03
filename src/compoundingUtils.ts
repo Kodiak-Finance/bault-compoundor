@@ -217,7 +217,7 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
       }
       return findBestWrapper(bault, stakingToken, publicClient);
     } else {
-      return findBestWrapper(bault, stakingToken, publicClient, [DEFAULT_BGT_WRAPPER_ADDRESS]);
+      return findBestWrapper(bault, stakingToken, publicClient, [onlyAllowedBgtWrapper]);
     }
   });
 
@@ -235,7 +235,6 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
         error: "Enso quote error",
       };
     }
-
     return {
       ...baultData,
       wrapper: wrapper.wrapper,
@@ -243,7 +242,7 @@ export async function getBaultsOnChainData(publicClient: PublicClient): Promise<
       wrapperValueInStakingToken: wrapper.wrapperValueInStakingToken,
     };
   });
-
+  
   // Mark incompatible baults as having wrapper incompatibility error
   const incompatibleBaults = validBaults
     .filter(({ onlyAllowedBgtWrapper }) => {
