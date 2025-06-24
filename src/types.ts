@@ -1,7 +1,19 @@
 import { Address } from "viem";
 
-export type BaultOnChainData = {
+export type BaultOnchainData = {
     stakingToken: Address;
+    bault: Address;
+    symbol: string;
+    bounty: bigint;
+    stakingTokenPrice: number | undefined;
+    earnedBgt: bigint;
+    onlyAllowedBgtWrapper: Address;
+    error?: string;
+};
+
+export type BaultCompleteData = {
+    stakingToken: Address;
+    stakingTokenPrice: number | undefined;
     bault: Address;
     symbol: string;
     bounty: bigint;
@@ -17,6 +29,7 @@ export type BaultFromKodiakBackend = {
     bault: Address;
     stakingToken: Address;
     symbol: string;
+    tokenLp: any;
 }
 
 export type CompoundResult = {

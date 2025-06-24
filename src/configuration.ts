@@ -38,10 +38,8 @@ export const DEFAULT_BGT_WRAPPER_ADDRESS = iBGT as Address; // The default wrapp
 
 // Contract Addresses for Compounding
 /** BountyHelper contract for executing compound transactions */
-export const BOUNTY_HELPER_ADDRESS =
-  "0xd7af1F067d038fB5Aaa58a3F2707A0e95AAb998B" as Address;
-export const BOUNTY_FUNDER_ADDRESS =
-  "0xE6A443EE33A23A25cdF820f77F69B001cBAbA4E9" as Address;
+export const BOUNTY_HELPER_ADDRESS = "0xE903feC95ACf0590854db206F0EE24992b50c79a" as Address;
+export const BOUNTY_FUNDER_ADDRESS = "0x39bEBd199136f9f508f8a6b19FC832e5a0CE3fc2" as Address;
 /** Address that receives excess tokens from compound operations (leave empty to use signer address) */
 export const BENEFICIARY_ADDRESS = "" as Address;
 
@@ -55,10 +53,19 @@ export const SLIPPAGE_INCREMENT_PER_RETRY = 15;
 
 // Bot Operation Configuration
 /** Minimum BGT earnings required to attempt compounding */
-export const MIN_EARNINGS_BGT = "1.5";
+export const MIN_EARNINGS_BGT = "1";
 /** Interval between main loop executions in milliseconds */
-export const LOOP_INTERVAL = 30 * 1000;
+export const LOOP_INTERVAL = 20 * 1000;
 /** Delay between retry attempts in milliseconds */
-export const RETRY_INTERVAL = 3 * 1000;
+export const RETRY_INTERVAL = 10 * 1000;
 /** Maximum number of retry attempts per bault */
-export const MAX_RETRIES = 3;
+export const MAX_RETRIES = 0;
+
+export const RESTRICT_BAULTS = false;
+export const ONLY_BAULT_ADDRESSES = [
+    "0x1451308b8bbfd25d1820cdf108178f75dadd67d5"
+]
+
+export const RESTRICT_STAKING_TOKENS = false;
+export const ONLY_STAKING_TOKEN_ADDRESSES = []
+
