@@ -1,6 +1,6 @@
 {
     "name": "bault-compoundor",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Simple scripts for compounding Baults",
     "type": "module",
     "scripts": {
