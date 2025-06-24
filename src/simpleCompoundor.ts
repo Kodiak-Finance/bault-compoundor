@@ -29,6 +29,9 @@ import {
   MAX_RETRIES,
   RETRY_INTERVAL,
   LOOP_INTERVAL,
+
+  ONLY_ALLOW_DEFAULT_WRAPPER,
+  DEFAULT_BGT_WRAPPER_ADDRESS,
 } from "./configuration";
 import { BaultCompleteData, CompoundResult, RetryInfo } from "./types";
 import { BAULT_ABI } from "./abis/Bault";
@@ -474,6 +477,13 @@ async function mainLoop() {
  * Handles errors gracefully and continues operation
  */
 async function start() {
+  console.log(`** CONFIGURATION **`);
+  console.log(`- Loop Interval: ${LOOP_INTERVAL}ms`);
+  console.log(`- Retry Interval: ${RETRY_INTERVAL}ms`);
+  console.log(`- Max Retries: ${MAX_RETRIES}`);
+  console.log(`- Only Allow Default Wrapper: ${ONLY_ALLOW_DEFAULT_WRAPPER}`);
+  console.log(`- Default BGT Wrapper Address: ${DEFAULT_BGT_WRAPPER_ADDRESS}`);
+
   console.log(`Service started.`);
   let running = true;
   while (running) {

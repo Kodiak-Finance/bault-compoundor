@@ -55,11 +55,11 @@ export const SLIPPAGE_INCREMENT_PER_RETRY = 15;
 /** Minimum BGT earnings required to attempt compounding */
 export const MIN_EARNINGS_BGT = "1";
 /** Interval between main loop executions in milliseconds */
-export const LOOP_INTERVAL = 20 * 1000;
+export const LOOP_INTERVAL = Number(getEnvVar("LOOP_INTERVAL")) || 20 * 1000;
 /** Delay between retry attempts in milliseconds */
-export const RETRY_INTERVAL = 10 * 1000;
+export const RETRY_INTERVAL = Number(getEnvVar("RETRY_INTERVAL")) || 10 * 1000;
 /** Maximum number of retry attempts per bault */
-export const MAX_RETRIES = 0;
+export const MAX_RETRIES = Number(getEnvVar("MAX_RETRIES")) || 0;
 
 export const RESTRICT_BAULTS = false;
 export const ONLY_BAULT_ADDRESSES = [
