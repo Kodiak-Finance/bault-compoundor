@@ -57,3 +57,7 @@ Edit `src/configuration.ts` to change:
 - `BENEFICIARY_ADDRESS` - Where earned tokens go.
 - `DEFAULT_BGT_WRAPPER_ADDRESS` - The wrapped BGT to default to in case the bot is not able to determine the best wrapper to claim dynamically.
 - `ONLY_ALLOW_DEFAULT_WRAPPER` - Set this to true, in case you only want to allow claiming using the `DEFAULT_BGT_WRAPPER_ADDRESS` instead of finding the best.
+- `RESTRICT_BAULTS` - Set this to true to filter baults with specific addresses, false to compound all
+- `ONLY_BAULT_ADDRESSES` - List of bault addresses in lower caps to filter only these baults
+- `RESTRICT_STAKING_TOKENS` - Set this to true to filter baults with specific staking token addresses(underlying asset), false to compound all
+- `ONLY_STAKING_TOKEN_ADDRESSES` - List of staking token addresses in lower caps to filter only baults with these underlying assets
