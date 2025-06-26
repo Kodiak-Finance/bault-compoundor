@@ -38,8 +38,8 @@ export const DEFAULT_BGT_WRAPPER_ADDRESS = iBGT as Address; // The default wrapp
 
 // Contract Addresses for Compounding
 /** BountyHelper contract for executing compound transactions */
-export const BOUNTY_HELPER_ADDRESS = "0xE903feC95ACf0590854db206F0EE24992b50c79a" as Address;
-export const BOUNTY_FUNDER_ADDRESS = "0x39bEBd199136f9f508f8a6b19FC832e5a0CE3fc2" as Address;
+export const BOUNTY_HELPER_ADDRESS = "0x4a19d3107F81aAa55202264f2c246aA75734eDb6" as Address;
+export const BOUNTY_FUNDER_ADDRESS = "0x6a17477B5C394cf3720dBe97b3Ea34a2B64af3f4" as Address;
 /** Address that receives excess tokens from compound operations (leave empty to use signer address) */
 export const BENEFICIARY_ADDRESS = "" as Address;
 
