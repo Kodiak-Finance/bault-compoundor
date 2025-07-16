@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "compound": "bun run src/simpleCompoundor.ts",
+        "bgt-compound": "bun run src/bgtCompoundor.ts",
         "build": "tsc",
         "clean": "rm -rf dist",
         "compound:node": "npm run build && node dist/simpleCompoundor.js"

@@ -14,6 +14,7 @@ import {
   YBGT,
   LBGT,
   iBGT,
+  mBGT,
   WBERA,
   BOUNTY_HELPER_ADDRESS,
   KODIAK_BAULTS_API_URL,
@@ -102,11 +103,11 @@ export async function checkWrapperValueInStakingToken(
 
 /**
  * Finds the most profitable BGT wrapper for a given bault
- * Compares yBGT, lBGT, and iBGT to determine which provides the best value
+ * Compares yBGT, lBGT, mBGT, and iBGT to determine which provides the best value
  * @param baultAddress - Address of the bault contract
  * @param stakingToken - Address of the underlying staking token
  * @param publicClient - Viem public client for blockchain calls
- * @param wrappers - Array of wrapper addresses to compare (defaults to [YBGT, LBGT, iBGT])
+ * @param wrappers - Array of wrapper addresses to compare (defaults to [YBGT, LBGT, mBGT, iBGT])
  * @param stakingTokenPrice - Optional price of staking token for enhanced calculation
  * @returns Best wrapper info or undefined if none found
  */
@@ -114,7 +115,7 @@ export async function findBestWrapper(
   baultAddress: Address,
   stakingToken: Address,
   publicClient: PublicClient,
-  wrappers: Address[] = [YBGT, LBGT, iBGT],
+  wrappers: Address[] = [YBGT, LBGT, iBGT, mBGT],
   stakingTokenPrice?: number,
   earnedBgt?: bigint,
 ): Promise<
@@ -197,7 +198,7 @@ export async function findBestWrapper(
           ),
         ),
       )
-    ).map((value) => BigInt(value));
+    ).map((value) => BigInt(value || 0));
     const beraPrice = await getBeraPrice();
     const beraValueInStakingToken = Number(formatEther(beraMinted)) * beraPrice / stakingTokenPrice;
     // Convert back to bigint with 18 decimals
@@ -604,7 +605,7 @@ export async function getTokenPricesFromSubgraph(
 
 
 if (require.main === module) {
-  getTokenPricesFromSubgraph([YBGT, LBGT, iBGT]).then((prices) => {
+  getTokenPricesFromSubgraph([YBGT, LBGT, mBGT, iBGT]).then((prices) => {
     console.log("prices", prices);
   });
 }

@@ -31,6 +31,7 @@ export const PRIVATE_KEY = getEnvVar("PRIVATE_KEY") as Hex | undefined;
 export const YBGT = "0x7e768f47dfDD5DAe874Aac233f1Bc5817137E453";
 export const LBGT = "0xBaadCC2962417C01Af99fb2B7C75706B9bd6Babe";
 export const iBGT = "0xac03CABA51e17c86c921E1f6CBFBdC91F8BB2E6b";
+export const mBGT = "0x927439eEf2e2520aFa78D8742cAe7Be3e3e90B11";
 export const WBERA = "0x6969696969696969696969696969696969696969";
 
 export const ONLY_ALLOW_DEFAULT_WRAPPER = false;  // will find the best wrapper for the bault if set to false, otherwise will only use the default wrapper.
