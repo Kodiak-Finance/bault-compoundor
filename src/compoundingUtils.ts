@@ -25,6 +25,7 @@ import {
   RESTRICT_BAULTS,
   ONLY_BAULT_ADDRESSES,
   ONLY_STAKING_TOKEN_ADDRESSES,
+  WRAPPER_SLIPPAGE_BPS,
 } from "./configuration";
 import { getEnsoQuote } from "./EnsoQuoter";
 import {
@@ -94,9 +95,12 @@ export async function checkWrapperValueInStakingToken(
     const inputAmountInEther = Number(formatUnits(inputAmount, 18));
     const valueInStakingToken =
       (inputAmountInEther * wrapperPrice) / stakingTokenPrice;
-
+    if (WRAPPER_SLIPPAGE_BPS > 10000) {
+      throw new Error("WRAPPER_SLIPPAGE_BPS is greater than 10000");
+    }
+    const valueInStakingTokenWithSlippage = valueInStakingToken * (10000 - WRAPPER_SLIPPAGE_BPS) / 10000;
     // Convert back to bigint with 18 decimals
-    const result = BigInt(Math.floor(valueInStakingToken * 1e18)).toString();
+    const result = BigInt(Math.floor(valueInStakingTokenWithSlippage * 1e18)).toString();
     return result;
   }
 }
@@ -214,7 +218,6 @@ export async function findBestWrapper(
       }
     }
     if (beraValueInStakingTokenBigInt > maxValue) {
-      console.log(`[BaultCompoundPriorityKeeper] Best wrapper for ${baultAddress}: WBERA`);
       return {
         wrapper: WBERA,
         wrapperMintAmount: beraMinted,

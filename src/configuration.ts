@@ -61,6 +61,9 @@ export const LOOP_INTERVAL = Number(getEnvVar("LOOP_INTERVAL")) || 20 * 1000;
 export const RETRY_INTERVAL = Number(getEnvVar("RETRY_INTERVAL")) || 10 * 1000;
 /** Maximum number of retry attempts per bault */
 export const MAX_RETRIES = Number(getEnvVar("MAX_RETRIES")) || 0;
+/** Slippage for accounting swapping a wrapper to wbera  */
+export const WRAPPER_SLIPPAGE_BPS = Number(getEnvVar("WRAPPER_SLIPPAGE_BPS")) || 100; //(100 = 0.1%)
+
 
 export const RESTRICT_BAULTS = false;
 export const ONLY_BAULT_ADDRESSES = [
