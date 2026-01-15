@@ -1,13 +1,9 @@
 import {
   Address,
-  createPublicClient,
-  createWalletClient,
-  http,
   Hex,
   getContract,
   parseGwei,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import { getEnsoQuote } from "./EnsoQuoter";
 import { berachain } from "viem/chains";
 import {
@@ -15,14 +11,13 @@ import {
   calculateBountyPercentage,
   formatReadableAmount,
 } from "./compoundingUtils";
+import { getAccount, getPublicClient, getWalletClient, logRpcStats, resetRpcStats } from "./rpcUtils";
 import { BOUNTY_HELPER_ABI } from "./abis/BountyHelperABI";
 import { ERC20_ABI } from "./abis/ERC20";
 import {
-  PRIVATE_KEY,
   BOUNTY_HELPER_ADDRESS,
   BENEFICIARY_ADDRESS,
   CHAIN_ID,
-  RPC_URL,
   COMPOUND_SLIPPAGE_BPS,
   MAX_COMPOUND_SLIPPAGE_BPS,
   SLIPPAGE_INCREMENT_PER_RETRY,
@@ -50,18 +45,9 @@ interface BaultProcessingResult {
 const EXPLORER_URL = "https://berascan.com/tx";
 
 // Initialize blockchain clients
-let publicClient = createPublicClient({
-  chain: berachain,
-  transport: http(RPC_URL),
-});
-let walletClient = PRIVATE_KEY
-  ? createWalletClient({
-      account: privateKeyToAccount(PRIVATE_KEY),
-      chain: berachain,
-      transport: http(RPC_URL),
-    })
-  : null;
-let account = PRIVATE_KEY ? privateKeyToAccount(PRIVATE_KEY) : null;
+const publicClient = getPublicClient();
+const walletClient = getWalletClient();
+const account = getAccount();
 
 /** Track retry attempts and original BGT amounts to detect external compounds */
 const retryMap: Record<string, RetryInfo> = {};
@@ -234,6 +220,7 @@ async function mainLoop() {
   const startTime = Date.now();
   const currentTime = new Date().toLocaleString();
   let blockNumber = 0n;
+  resetRpcStats();
   try {
     blockNumber = await publicClient.getBlockNumber();
   } catch {}
@@ -469,6 +456,7 @@ async function mainLoop() {
   logMsg += `- Total execution: ${totalTime}ms\n`;
   // Log to console the final report
   console.log(logMsg);
+  logRpcStats();
 }
 
 /**

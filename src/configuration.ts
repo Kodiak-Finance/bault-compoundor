@@ -71,5 +71,5 @@ export const ONLY_BAULT_ADDRESSES = [
 ]
 
 export const RESTRICT_STAKING_TOKENS = false;
-export const ONLY_STAKING_TOKEN_ADDRESSES = []
+export const ONLY_STAKING_TOKEN_ADDRESSES: string[] = []
 

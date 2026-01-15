@@ -43,3 +43,20 @@ export type RetryInfo = {
     count: number;
     originalEarnedBgt: bigint;
 };
+
+/**
+ * Input for batch wrapper preview
+ */
+export interface BatchWrapperPreviewInput {
+    baultAddress: Address;
+    wrappers: Address[];
+}
+
+/**
+ * Output from batch wrapper preview
+ */
+export interface BatchWrapperPreviewOutput {
+    wrapperMintAmounts: bigint[];
+    earned: bigint;
+    hasAnyFailure: boolean; // Track if any call failed for this bault
+}
