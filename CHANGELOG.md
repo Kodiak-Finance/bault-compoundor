@@ -1,5 +1,14 @@
 # Changelog
 
+# Version 1.0.2 - Latest
+
+## Performance Optimizations
+
+### RPC Call Batching
+- **Multicall Optimization**: Reduced RPC calls from N to 1 for fetching bault data across all baults
+- **Batch Wrapper Previews**: Consolidated wrapper preview calls into a single multicall, eliminating per-bault RPC overhead
+- **RPC Stats Tracking**: Added logging to monitor multicall vs non-multicall request counts
+
 # Version 1.0.1 - 24th June 2025
 https://github.com/Kodiak-Finance/bault-compoundor/releases/tag/v1.0.1
 
