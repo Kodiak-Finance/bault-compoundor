@@ -10,10 +10,8 @@ import {
 import {
   CHAIN_ID,
   COMPOUND_SLIPPAGE_BPS,
-  YBGT,
   LBGT,
   iBGT,
-  mBGT,
   WBERA,
   BOUNTY_HELPER_ADDRESS,
   KODIAK_BAULTS_API_URL,
@@ -266,7 +264,7 @@ async function selectBestWrapperFromData(
     if (wrapperValues.length === 0) return undefined;
 
     let maxValue = 0n;
-    let indexOfBestWrapper = 2; // default to iBGT
+    let indexOfBestWrapper = 0; // default to iBGT
     for (let i = 0; i < wrapperValues.length; i++) {
       if (wrapperValues[i] > maxValue) {
         maxValue = wrapperValues[i];
@@ -311,7 +309,7 @@ async function selectBestWrapperFromData(
 
   // Find best wrapper among the provided wrappers
   let maxValue = 0n;
-  let indexOfBestWrapper = 2; // default to iBGT
+  let indexOfBestWrapper = 0; // default to iBGT
   for (let i = 0; i < wrapperValues.length; i++) {
     if (wrapperValues[i] > maxValue) {
       maxValue = wrapperValues[i];
@@ -333,224 +331,6 @@ async function selectBestWrapperFromData(
     wrapperMintAmount: wrapperMintAmounts[indexOfBestWrapper],
     wrapperValueInStakingToken: wrapperValues[indexOfBestWrapper],
   };
-}
-
-/**
- * Finds the most profitable BGT wrapper for a given bault
- * Compares yBGT, lBGT, mBGT, and iBGT to determine which provides the best value
- * @param baultAddress - Address of the bault contract
- * @param stakingToken - Address of the underlying staking token
- * @param publicClient - Viem public client for blockchain calls
- * @param wrappers - Array of wrapper addresses to compare (defaults to [YBGT, LBGT, mBGT, iBGT])
- * @param stakingTokenPrice - Optional price of staking token for enhanced calculation
- * @returns Best wrapper info or undefined if none found
- */
-export async function findBestWrapper(
-  baultAddress: Address,
-  stakingToken: Address,
-  publicClient: PublicClient,
-  wrappers: Address[] = [YBGT, LBGT, iBGT, mBGT],
-  stakingTokenPrice?: number,
-  earnedBgt?: bigint,
-  blockNumber?: bigint
-): Promise<
-  | {
-    wrapper: Address;
-    wrapperMintAmount: bigint;
-    wrapperValueInStakingToken: bigint;
-  }
-  | undefined
-> {
-  try {
-    // Get wrapper prices from Kodiak backend
-    const wrapperPrices = await getTokenPricesFromSubgraph(wrappers);
-    if (!blockNumber) {
-      blockNumber = await publicClient.getBlockNumber();
-    }
-    const results = await publicClient.multicall({
-      contracts: [
-        ...wrappers.map((wrapper) => ({
-          address: baultAddress,
-          abi: BAULT_ABI,
-          functionName: "previewClaimBgtWrapper" as const,
-          args: [wrapper],
-        })),
-        {
-          address: baultAddress,
-          abi: BAULT_ABI,
-          functionName: "earned" as const,
-          args: [],
-        },
-      ],
-      blockNumber,
-      allowFailure: false, // All calls must succeed for best wrapper selection
-    });
-
-    // Extract wrapper mint amounts from multicall results
-    const wrapperMintAmounts = wrappers.map((_, i) => results[i] as bigint);
-    const beraMinted = earnedBgt || 0n;
-
-    // If no staking token price provided, fallback to Enso quoting
-    if (!stakingTokenPrice || !wrapperPrices) {
-      const wrapperValues = (
-        await Promise.all(
-          wrappers.map(async (wrapper, index) => {
-            const sellAmount = wrapperMintAmounts[index].toString();
-            if (sellAmount === "0") {
-              return "0";
-            }
-            const quote = await getEnsoQuote(
-              CHAIN_ID,
-              wrapper,
-              stakingToken,
-              sellAmount,
-              BOUNTY_HELPER_ADDRESS,
-              BOUNTY_HELPER_ADDRESS,
-              BOUNTY_HELPER_ADDRESS,
-              COMPOUND_SLIPPAGE_BPS,
-              false
-            );
-            return quote.amountOut;
-          })
-        )
-      ).map((value) => BigInt(value));
-
-      if (wrapperValues.length === 0) return undefined;
-      let maxValue = 0n;
-      let indexOfBestWrapper = 2; //ibgt wrapper
-      for (let i = 0; i < wrapperValues.length; i++) {
-        if (wrapperValues[i] > maxValue) {
-          maxValue = wrapperValues[i];
-          indexOfBestWrapper = i;
-        }
-      }
-      return {
-        wrapper: wrappers[indexOfBestWrapper],
-        wrapperMintAmount: wrapperMintAmounts[indexOfBestWrapper],
-        wrapperValueInStakingToken: wrapperValues[indexOfBestWrapper],
-      };
-    }
-
-    // Use SG price-based calculation
-    const wrapperValues = wrappers.map((wrapper, index) =>
-      BigInt(
-        checkWrapperValueInStakingToken(
-          wrapper,
-          wrapperMintAmounts[index],
-          wrapperPrices,
-          stakingTokenPrice
-        ) || 0
-      )
-    );
-    const beraPrice = await getBeraPrice();
-    const beraValueInStakingToken = Number(formatEther(beraMinted)) * beraPrice / stakingTokenPrice;
-    // Convert back to bigint with 18 decimals
-    const beraValueInStakingTokenBigInt = BigInt(Math.floor(beraValueInStakingToken * 1e18));
-
-    if (wrapperValues.length === 0) return undefined;
-    let maxValue = 0n;
-    let indexOfBestWrapper = 2; //ibgt wrapper
-    for (let i = 0; i < wrapperValues.length; i++) {
-      if (wrapperValues[i] > maxValue) {
-        maxValue = wrapperValues[i];
-        indexOfBestWrapper = i;
-      }
-    }
-    if (beraValueInStakingTokenBigInt > maxValue) {
-      return {
-        wrapper: WBERA,
-        wrapperMintAmount: beraMinted,
-        wrapperValueInStakingToken: beraValueInStakingTokenBigInt,
-      };
-    }
-    // console.log(`[BaultCompoundPriorityKeeper] Best wrapper for ${baultAddress}: ${wrappers[indexOfBestWrapper]}`);
-    return {
-      wrapper: wrappers[indexOfBestWrapper],
-      wrapperMintAmount: wrapperMintAmounts[indexOfBestWrapper],
-      wrapperValueInStakingToken: wrapperValues[indexOfBestWrapper],
-    };
-  } catch (error) {
-    console.error(`Error in findBestWrapper for Bault ${baultAddress}:`, error);
-    return undefined;
-  }
-}
-/**
- * Fetches comprehensive on-chain data for all baults with optimized parallel execution
- * Includes bounty amounts, earned BGT, and best wrapper analysis
- * @param publicClient - Viem public client for blockchain interactions
- * @returns Array of bault data with complete on-chain information
- */
-export async function getBaultsWithOnchainData(
-  publicClient: PublicClient,
-): Promise<BaultOnchainData[]> {
-  const baults = await getBaultsFromKodiakBackend();
-
-  // Optimized: Batch ALL baults into a SINGLE multicall (3N RPC → 1 RPC for N baults)
-  // Build flat array of all contract calls for all baults
-  const allContracts = baults.flatMap(({ bault }) => [
-    {
-      address: bault,
-      abi: BAULT_ABI,
-      functionName: "bounty" as const,
-    },
-    {
-      address: bault,
-      abi: BAULT_ABI,
-      functionName: "earned" as const,
-    },
-    {
-      address: bault,
-      abi: BAULT_ABI,
-      functionName: "onlyAllowedBgtWrapper" as const,
-    },
-  ]);
-
-  // Execute single multicall for all baults
-  const allResults = await publicClient.multicall({
-    contracts: allContracts,
-    allowFailure: true, // Allow individual failures while getting data for other baults
-  });
-
-  // Map results back to individual baults (3 results per bault)
-  const baultsWithOnChainData = baults.map(
-    ({ stakingToken, bault, symbol, tokenLp }, index) => {
-      const startIdx = index * 3;
-      const bountyResult = allResults[startIdx];
-      const earnedResult = allResults[startIdx + 1];
-      const wrapperResult = allResults[startIdx + 2];
-
-      // Check if any call failed for this bault
-      if (
-        bountyResult.status === "failure" ||
-        earnedResult.status === "failure" ||
-        wrapperResult.status === "failure"
-      ) {
-        return {
-          stakingToken,
-          bault,
-          symbol,
-          bounty: 0n,
-          earnedBgt: 0n,
-          onlyAllowedBgtWrapper: zeroAddress,
-          stakingTokenPrice: undefined,
-          error: "Error fetching onchain data",
-        };
-      }
-
-      return {
-        stakingToken,
-        bault,
-        symbol,
-        bounty: bountyResult.result as bigint,
-        earnedBgt: earnedResult.result as bigint,
-        onlyAllowedBgtWrapper: wrapperResult.result as Address,
-        stakingTokenPrice: tokenLp.price,
-        error: undefined,
-      };
-    }
-  );
-
-  return baultsWithOnChainData as BaultOnchainData[];
 }
 
 /**
@@ -664,12 +444,12 @@ export async function getBaultsWithCompleteData(
   });
 
   // --- OPTIMIZED: Batch all wrapper preview calls into a single multicall ---
-  // Instead of N multicalls (one per findBestWrapper), we make 1 multicall for all baults
+  // Instead of N RPC calls (one per bault), we make 1 multicall for all baults
 
   const blockNumber = await publicClient.getBlockNumber();
 
   // Fetch prices from subgraph once for all baults (not per-bault)
-  const allWrappers: Address[] = [YBGT, LBGT, iBGT, mBGT];
+  const allWrappers: Address[] = [iBGT, LBGT];
   const [wrapperPrices, beraPrice] = await Promise.all([
     getTokenPricesFromSubgraph(allWrappers),
     getBeraPrice(),
@@ -730,8 +510,8 @@ export async function getBaultsWithCompleteData(
         return undefined;
       }
 
-      // If any wrapper call failed for this bault, skip it to maintain original behavior
-      // (original findBestWrapper used allowFailure: false)
+      // If any wrapper call failed for this bault, skip it
+      // We use allowFailure: true in batching for isolation, but still require success per bault
       if (previewResult.hasAnyFailure) {
         console.error(
           `Some wrapper preview calls failed for bault ${input.baultAddress}`
@@ -950,11 +730,4 @@ export async function getTokenPricesFromSubgraph(
   });
 
   return prices;
-}
-
-
-if (require.main === module) {
-  getTokenPricesFromSubgraph([YBGT, LBGT, mBGT, iBGT]).then((prices) => {
-    console.log("prices", prices);
-  });
 }

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **Bault Compoundor Bot** for Berachain that automatically compounds BGT (Berachain Governance Token) rewards from Kodiak Finance baults when profitable. The bot operates autonomously, claiming rewards as BGT wrappers (yBGT, lBGT, iBGT, mBGT) or BERA, swapping them via Enso protocol, and compounding them back into baults.
+This is a **Bault Compoundor Bot** for Berachain that automatically compounds BGT (Berachain Governance Token) rewards from Kodiak Finance baults when profitable. The bot operates autonomously, claiming rewards as BGT wrappers (lBGT, iBGT) or BERA, swapping them via Enso protocol, and compounding them back into baults.
 
 **Key Concept**: The bot uses the BountyHelper contract which allows zero-capital compounding by borrowing the bounty upfront. The bot's profit comes from excess tokens after returning the borrowed bounty.
 
@@ -99,13 +99,13 @@ Located in `compoundingUtils.ts`:
 
 1. **Config-driven**: `ONLY_ALLOW_DEFAULT_WRAPPER` flag controls strategy
    - `true`: Only use `DEFAULT_BGT_WRAPPER_ADDRESS`
-   - `false`: Compare all wrappers (YBGT, LBGT, iBGT, mBGT) + BERA
+   - `false`: Compare all wrappers (LBGT, iBGT) + BERA
 
 2. **Bault restrictions**: Respects `onlyAllowedBgtWrapper` from bault contract
    - If bault specifies a wrapper, only that wrapper can be used
    - If zero address, bot can choose any wrapper
 
-3. **Price-based selection** (`findBestWrapper`, `selectBestWrapperFromData`)
+3. **Price-based selection** (`selectBestWrapperFromData`)
    - Fetches wrapper prices from Kodiak subgraph
    - Calculates wrapper value in staking token terms
    - Compares with BERA value (considers burn tax vs LST premium)
@@ -193,7 +193,7 @@ BaultCompleteData {
   symbol: string;              // Human-readable identifier
   bounty: bigint;              // Required bounty to borrow
   earnedBgt: bigint;           // BGT earned by bault
-  wrapper: Address;            // Selected wrapper (yBGT/lBGT/iBGT/mBGT/WBERA)
+  wrapper: Address;            // Selected wrapper (lBGT/iBGT/WBERA)
   wrapperMintAmount: bigint;   // Amount of wrapper to claim
   wrapperValueInStakingToken: bigint;  // Expected output from swap
   error?: string;              // Error message if processing failed

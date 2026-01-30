@@ -54,7 +54,7 @@ export async function getEnsoQuote(
         console.error("Error: ENSO_API_KEY environment variable is not set.");
         process.exit(1);
     }
-    const baseUrl = 'https://api.enso.finance/api/v1/shortcuts/route';
+    const baseUrl = 'https://api.enso.build/api/v1/shortcuts/route';
     const url = new URL(baseUrl);
     url.searchParams.set('chainId', chainId.toString());
     url.searchParams.set('fromAddress', fromAddress);

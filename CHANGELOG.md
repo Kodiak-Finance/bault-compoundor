@@ -1,6 +1,10 @@
 # Changelog
 
-# Version 1.0.2 - Latest
+# Version 1.0.3 - 30th January 2026 (Latest)
+- Critical update to supported wrappers allowed for compounding
+- minor cleanups
+
+# Version 1.0.2 - 15th January 2026
 
 ## Performance Optimizations
 
