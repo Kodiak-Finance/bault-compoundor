@@ -14,9 +14,8 @@ import { getEnsoQuote } from "./EnsoQuoter";
 import { berachain } from "viem/chains";
 import {
   formatReadableAmount,
-  getBeraPrice,
   getBaultsFromKodiakBackend,
-  getTokenPricesFromSubgraph
+  getTokenPriceFromKodiakBackendWithFallback,
 } from "./compoundingUtils";
 import { BOUNTY_HELPER_ABI } from "./abis/BountyHelperABI";
 import { BaultFromKodiakBackend } from "./types";
@@ -78,12 +77,11 @@ let verbose = false;
  */
 async function getEligibleBaultsForBgtCompound(): Promise<BaultDataForBgtCompound[]> {
   const baultsFromBackend = await getBaultsFromKodiakBackend();
-  const beraPrice = await getBeraPrice();
-
-  if (!beraPrice) {
-    throw new Error("Could not fetch BERA price");
+  const beraPriceData = await getTokenPriceFromKodiakBackendWithFallback([WBERA]);
+  if (!beraPriceData || !beraPriceData[WBERA]) {
+    throw new Error("Could not fetch BERA price from backend or subgraph");
   }
-
+  const beraPrice = beraPriceData[WBERA];
   const almostEligibleBaults: BaultDataForBgtCompound[] = [];
   const eligibleBaults: BaultDataForBgtCompound[] = [];
 
