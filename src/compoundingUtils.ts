@@ -449,11 +449,15 @@ export async function getBaultsWithCompleteData(
   const blockNumber = await publicClient.getBlockNumber();
 
   // Fetch prices from subgraph once for all baults (not per-bault)
-  const allWrappers: Address[] = [iBGT, LBGT];
-  const [wrapperPrices, beraPrice] = await Promise.all([
-    getTokenPricesFromSubgraph(allWrappers),
-    getBeraPrice(),
-  ]);
+  const allWrappers: Address[] = [iBGT];
+  const allPrices = await getTokenPriceFromKodiakBackendWithFallback([...allWrappers, WBERA]);
+  const beraPrice = allPrices[WBERA];
+  const wrapperPrices = Object.keys(allPrices).reduce((acc, key) => {
+    if (key !== WBERA) {
+      acc[key] = allPrices[key];
+    }
+    return acc;
+  }, {} as Record<string, number>);
 
   // Build list of bault/wrapper pairs for batch multicall
   // Preserve the exact same wrapper selection logic as before
@@ -662,7 +666,7 @@ export function calculateBountyPercentage(
 }
 
 /** Subgraph URL for token price fetching */
-const SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_clpx84oel0al201r78jsl0r3i/subgraphs/kodiak-v3-berachain-mainnet/latest/gn"
+const SUBGRAPH_URL = "https://api.subgraph.ormilabs.com/api/public/d7eed6cc-ad4a-4862-8017-89893c4095d3/subgraphs/kodiak-v3/latest/gn";
 
 // Fetch BERA price in USD from bundle
 export async function getBeraPrice(): Promise<number> {
@@ -730,4 +734,39 @@ export async function getTokenPricesFromSubgraph(
   });
 
   return prices;
+}
+
+export async function getTokenPriceFromKodiakBackendWithFallback(
+  tokens: Address[],
+): Promise<Record<Address, number>> {
+  const pricesFromBackend = await getTokenPricesFromKodiakBackend(tokens);
+  if (!pricesFromBackend || Object.keys(pricesFromBackend).length === 0) {
+    console.warn("Falling back to subgraph for token prices");
+    try {
+      const pricesFromSubgraph = await getTokenPricesFromSubgraph(tokens);
+      return pricesFromSubgraph;
+    } catch (error) {
+      console.error("Error fetching prices from subgraph fallback: ", error);
+      return {};
+    }
+  }
+  return pricesFromBackend;
+}
+
+export async function getTokenPricesFromKodiakBackend(
+  tokens: Address[],
+): Promise<Record<Address, number>> {
+  try {
+    const response = await fetch(
+      `https://backend.kodiak.finance/tokens?addresses=${tokens.map(token => token.toLowerCase()).join(",")}`,
+    );
+    const responseData = await response.json();
+    return responseData.reduce((acc: Record<Address, number>, priceData: any) => {
+      acc[priceData.id] = priceData.price;
+      return acc;
+    }, {});
+  } catch (error) {
+    console.error("Error fetching prices from Kodiak backend: ", error);
+    return {};
+  }
 }
