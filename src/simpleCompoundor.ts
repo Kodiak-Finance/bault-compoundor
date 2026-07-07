@@ -23,9 +23,6 @@ import {
   MAX_RETRIES,
   RETRY_INTERVAL,
   LOOP_INTERVAL,
-
-  ONLY_ALLOW_DEFAULT_WRAPPER,
-  DEFAULT_BGT_WRAPPER_ADDRESS,
 } from "./configuration";
 import { BaultCompleteData, CompoundResult, RetryInfo } from "./types";
 import { BAULT_ABI } from "./abis/Bault";
@@ -48,7 +45,7 @@ const publicClient = getPublicClient();
 const walletClient = getWalletClient();
 const account = getAccount();
 
-/** Track retry attempts and original BGT amounts to detect external compounds */
+/** Track retry attempts and original earned amounts to detect external compounds */
 const retryMap: Record<string, RetryInfo> = {};
 
 /**
@@ -64,7 +61,7 @@ async function tryCompound(
     stakingToken,
     bault,
     bounty,
-    earnedBgt,
+    earnedRewardAmount,
     wrapper,
     wrapperMintAmount,
     wrapperValueInStakingToken,
@@ -75,16 +72,16 @@ async function tryCompound(
   // If retrying, check if someone else already compounded
   if (retries > 0) {
     try {
-      // Get the current earned BGT
+      // Get the current earned reward amount
       const baultContract = getContract({
         address: bault,
         abi: BAULT_ABI,
         client: publicClient,
       });
-      const currentEarnedBgt = await baultContract.read.earned();
+      const currentEarnedRewardAmount = await baultContract.read.earned();
 
       // If current earned is less than original, someone else compounded
-      if (currentEarnedBgt < retryMap[bault]?.originalEarnedBgt) {
+      if (currentEarnedRewardAmount < retryMap[bault]?.originalEarnedRewardAmount) {
         return { status: "skipped", tx: null, error: "Already compounded" };
       }
     } catch (e) {
@@ -165,9 +162,9 @@ async function tryCompound(
     const txHash = await walletClient.writeContract(simulationResult.request);
     console.debug(`Transaction Hash: ${txHash}`);
 
-    // Store original earned BGT in retry map
+    // Store original earned amount in retry map
     if (!retryMap[bault]) {
-      retryMap[bault] = { count: 0, originalEarnedBgt: earnedBgt };
+      retryMap[bault] = { count: 0, originalEarnedRewardAmount: earnedRewardAmount };
     }
 
     const receipt = await publicClient.waitForTransactionReceipt({
@@ -178,7 +175,7 @@ async function tryCompound(
 
     if (receipt.status === "success") {
       // Reset retry counter on success
-      retryMap[bault] = { count: 0, originalEarnedBgt: 0n };
+      retryMap[bault] = { count: 0, originalEarnedRewardAmount: 0n };
       // Get reward leak percentage
       const beneficiaryBalanceAfter = await publicClient.readContract({
         address: stakingToken,
@@ -229,7 +226,7 @@ async function mainLoop() {
   const baults = await getBaultsWithCompleteData(publicClient);
   const baultFetchTime = Date.now() - baultFetchStart;
 
-  // Filter almost eligible baults based on wrapper value (based on subgraph) greater than 99% of bounty value
+  // Filter almost eligible baults based on BERA-priced reward value greater than 99% of bounty value
   const almostEligible = baults.filter(
     (b) =>
       !b.error &&
@@ -281,28 +278,28 @@ async function mainLoop() {
 
   const ineligibleDetails = ineligible.map((b) => {
     if (b.error) {
-      const earnedStr = formatReadableAmount(b.earnedBgt);
-      return `- ${b.symbol} (${b.bault}): BGT=${earnedStr}. Error: ${b.error}`;
+      const earnedStr = formatReadableAmount(b.earnedRewardAmount);
+      return `- ${b.symbol} (${b.bault}): WBERA=${earnedStr}. Error: ${b.error}`;
     }
     const rewardStr = formatReadableAmount(b.wrapperValueInStakingToken);
     const bountyStr = formatReadableAmount(b.bounty);
-    const earnedStr = formatReadableAmount(b.earnedBgt);
+    const earnedStr = formatReadableAmount(b.earnedRewardAmount);
     const bountyPercentage = calculateBountyPercentage(
       b.wrapperValueInStakingToken,
       b.bounty,
     );
-    return `- ${b.symbol} (${b.bault}): Reward=${rewardStr}, Bounty=${bountyStr} (${bountyPercentage}), BGT=${earnedStr}`;
+    return `- ${b.symbol} (${b.bault}): Reward=${rewardStr}, Bounty=${bountyStr} (${bountyPercentage}), WBERA=${earnedStr}`;
   });
 
   const eligibleDetails = eligible.map((b) => {
     const rewardStr = formatReadableAmount(b.wrapperValueInStakingToken);
     const bountyStr = formatReadableAmount(b.bounty);
-    const earnedStr = formatReadableAmount(b.earnedBgt);
+    const earnedStr = formatReadableAmount(b.earnedRewardAmount);
     const bountyPercentage = calculateBountyPercentage(
       b.wrapperValueInStakingToken,
       b.bounty,
     );
-    return `- ${b.symbol} (${b.bault}): Reward=${rewardStr}, Bounty=${bountyStr} (${bountyPercentage}), BGT=${earnedStr}`;
+    return `- ${b.symbol} (${b.bault}): Reward=${rewardStr}, Bounty=${bountyStr} (${bountyPercentage}), WBERA=${earnedStr}`;
   });
 
   const processingResults: BaultProcessingResult[] = [];
@@ -313,7 +310,7 @@ async function mainLoop() {
     // Get retry info
     const retryInfo = retryMap[b.bault] || {
       count: 0,
-      originalEarnedBgt: b.earnedBgt,
+      originalEarnedRewardAmount: b.earnedRewardAmount,
     };
     let retries = retryInfo.count;
     let finalResult: BaultProcessingResult;
@@ -369,7 +366,7 @@ async function mainLoop() {
           retryCount: retries,
           excessTokensReceived: result.excessTokensReceived,
         };
-        retryMap[b.bault] = { count: 0, originalEarnedBgt: 0n };
+        retryMap[b.bault] = { count: 0, originalEarnedRewardAmount: 0n };
         break;
       } else if (result.status === "skipped") {
         finalResult = {
@@ -378,7 +375,7 @@ async function mainLoop() {
           error: result.error,
           retryCount: retries,
         };
-        retryMap[b.bault] = { count: 0, originalEarnedBgt: 0n };
+        retryMap[b.bault] = { count: 0, originalEarnedRewardAmount: 0n };
         break;
       } else {
         retries++;
@@ -389,12 +386,12 @@ async function mainLoop() {
             error: result.error,
             retryCount: retries - 1,
           };
-          retryMap[b.bault] = { count: 0, originalEarnedBgt: 0n };
+          retryMap[b.bault] = { count: 0, originalEarnedRewardAmount: 0n };
           break;
         } else {
           retryMap[b.bault] = {
             count: retries,
-            originalEarnedBgt: retryInfo.originalEarnedBgt,
+            originalEarnedRewardAmount: retryInfo.originalEarnedRewardAmount,
           };
           console.log(
             `Retrying ${b.bault} (attempt ${retries}): ${result.error}`,
@@ -468,8 +465,6 @@ async function start() {
   console.log(`- Loop Interval: ${LOOP_INTERVAL}ms`);
   console.log(`- Retry Interval: ${RETRY_INTERVAL}ms`);
   console.log(`- Max Retries: ${MAX_RETRIES}`);
-  console.log(`- Only Allow Default Wrapper: ${ONLY_ALLOW_DEFAULT_WRAPPER}`);
-  console.log(`- Default BGT Wrapper Address: ${DEFAULT_BGT_WRAPPER_ADDRESS}`);
 
   console.log(`Service started.`);
   let running = true;
