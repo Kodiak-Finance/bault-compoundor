@@ -4,8 +4,8 @@ import {
   getAddress,
   formatUnits,
   parseEther,
+  parseUnits,
   zeroAddress,
-  formatEther,
 } from "viem";
 import {
   WBERA,
@@ -22,6 +22,16 @@ import {
   BaultCompleteData,
 } from "./types";
 import { BAULT_ABI } from "./abis/Bault";
+
+const PRICE_SCALE_DECIMALS = 18;
+
+function toScaledPrice(price: number): bigint {
+  if (!Number.isFinite(price) || price <= 0) {
+    return 0n;
+  }
+
+  return parseUnits(price.toFixed(PRICE_SCALE_DECIMALS), PRICE_SCALE_DECIMALS);
+}
 
 /**
  * Fetches bault data from Kodiak backend API
@@ -69,12 +79,18 @@ function getBeraValueInStakingToken(
     return 0n;
   }
 
-  const valueInStakingToken =
-    (Number(formatEther(earnedRewardAmount)) * beraPrice) / stakingTokenPrice;
-  const valueInStakingTokenWithSlippage =
-    (valueInStakingToken * (10000 - WRAPPER_SLIPPAGE_BPS)) / 10000;
+  const beraPriceScaled = toScaledPrice(beraPrice);
+  const stakingTokenPriceScaled = toScaledPrice(stakingTokenPrice);
+  if (beraPriceScaled === 0n || stakingTokenPriceScaled === 0n) {
+    return 0n;
+  }
 
-  return BigInt(Math.floor(valueInStakingTokenWithSlippage * 1e18));
+  const valueInStakingToken =
+    (earnedRewardAmount * beraPriceScaled) / stakingTokenPriceScaled;
+  const valueInStakingTokenWithSlippage =
+    (valueInStakingToken * BigInt(10000 - WRAPPER_SLIPPAGE_BPS)) / 10000n;
+
+  return valueInStakingTokenWithSlippage;
 }
 
 /**
