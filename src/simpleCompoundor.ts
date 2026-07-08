@@ -67,7 +67,10 @@ async function tryCompound(
     wrapperValueInStakingToken,
   }: BaultCompleteData,
   retries: number,
-  quote?: any,
+  quote: any,
+  gasParams: { maxFee: bigint; priorityFee: bigint } | null,
+  beneficiaryBalanceBefore: bigint | undefined,
+  beneficiaryAddress: Address,
 ): Promise<CompoundResult> {
   // If retrying, check if someone else already compounded
   if (retries > 0) {
@@ -88,22 +91,13 @@ async function tryCompound(
       console.error(`Error checking bault ${bault} earned:`, e);
     }
   }
-  let beneficiaryAddress = BENEFICIARY_ADDRESS;
-  if (beneficiaryAddress === ("" as Address)) {
-    // TO safe guard from bad config
-    if (!account) {
-      throw new Error("No account found, please set PRIVATE_KEY in .env");
-    }
-    beneficiaryAddress = account.address;
+  if (beneficiaryBalanceBefore === undefined) {
+    return {
+      status: "fail",
+      tx: null,
+      error: "Failed to read beneficiary balance",
+    };
   }
-
-  // Get beneficiary balance before compound to track reward leak
-  const beneficiaryBalanceBefore = await publicClient.readContract({
-    address: stakingToken,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: [beneficiaryAddress],
-  });
 
   if (!walletClient || !account || !BOUNTY_HELPER_ADDRESS)
     return {
@@ -112,14 +106,15 @@ async function tryCompound(
       error: "Wallet or Bounty Helper not configured",
     };
 
-  // Set up gas parameters
-  const gasFeeData = await publicClient.getFeeHistory({
-    blockCount: 1,
-    rewardPercentiles: [50],
-  });
-  const baseFee = gasFeeData.baseFeePerGas[0];
-  const priorityFee = parseGwei("0.1");
-  const maxFee = baseFee * 10n + priorityFee;
+  if (!gasParams) {
+    return {
+      status: "fail",
+      tx: null,
+      error: "Failed to get gas fee data",
+    };
+  }
+
+  const { maxFee, priorityFee } = gasParams;
 
   // Simulate the transaction
   let simulationResult;
@@ -205,6 +200,62 @@ async function tryCompound(
       error: `Transaction failed: ${message}`,
     };
   }
+}
+
+/**
+ * Fetches gas fee parameters once per loop iteration, shared across all baults processed that run.
+ */
+async function getGasFeeParams(): Promise<{
+  maxFee: bigint;
+  priorityFee: bigint;
+} | null> {
+  try {
+    const gasFeeData = await publicClient.getFeeHistory({
+      blockCount: 1,
+      rewardPercentiles: [50],
+    });
+    const baseFee = gasFeeData.baseFeePerGas[0];
+    const priorityFee = parseGwei("0.1");
+    const maxFee = baseFee * 10n + priorityFee;
+
+    return { maxFee, priorityFee };
+  } catch (e) {
+    console.error(`Error getting fee history:`, e);
+    return null;
+  }
+}
+
+/**
+ * Reads beneficiary staking-token balances for eligible baults using a single multicall.
+ */
+async function getBeneficiaryBalancesBefore(
+  baults: BaultCompleteData[],
+  beneficiaryAddress: Address,
+): Promise<Record<string, bigint | undefined>> {
+  const balances: Record<string, bigint | undefined> = {};
+  if (baults.length === 0) return balances;
+
+  try {
+    const results = await publicClient.multicall({
+      contracts: baults.map((b) => ({
+        address: b.stakingToken,
+        abi: ERC20_ABI,
+        functionName: "balanceOf" as const,
+        args: [beneficiaryAddress] as const,
+      })),
+      allowFailure: true,
+    });
+
+    baults.forEach((b, index) => {
+      const result = results[index];
+      balances[b.bault] =
+        result.status === "success" ? (result.result as bigint) : undefined;
+    });
+  } catch (e) {
+    console.error("Error in getBeneficiaryBalancesBefore multicall:", e);
+  }
+
+  return balances;
 }
 
 /**
@@ -302,6 +353,20 @@ async function mainLoop() {
     return `- ${b.symbol} (${b.bault}): Reward=${rewardStr}, Bounty=${bountyStr} (${bountyPercentage}), WBERA=${earnedStr}`;
   });
 
+  let beneficiaryAddress = BENEFICIARY_ADDRESS;
+  if (beneficiaryAddress === ("" as Address)) {
+    // TO safe guard from bad config
+    if (!account) {
+      throw new Error("No account found, please set PRIVATE_KEY in .env");
+    }
+    beneficiaryAddress = account.address;
+  }
+  const gasParams = eligible.length > 0 ? await getGasFeeParams() : null;
+  const beneficiaryBalancesBefore = await getBeneficiaryBalancesBefore(
+    eligible,
+    beneficiaryAddress,
+  );
+
   const processingResults: BaultProcessingResult[] = [];
   const txStart = Date.now();
 
@@ -356,7 +421,14 @@ async function mainLoop() {
         break;
       }
 
-      const result = await tryCompound(b, retries, quote);
+      const result = await tryCompound(
+        b,
+        retries,
+        quote,
+        gasParams,
+        beneficiaryBalancesBefore[b.bault],
+        beneficiaryAddress,
+      );
 
       if (result.status === "success") {
         finalResult = {

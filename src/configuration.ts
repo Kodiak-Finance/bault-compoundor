@@ -31,8 +31,7 @@ export const WBERA = "0x6969696969696969696969696969696969696969";
 
 // Contract Addresses for Compounding
 /** BountyHelper contract for executing compound transactions */
-export const BOUNTY_HELPER_ADDRESS = "0x4a19d3107F81aAa55202264f2c246aA75734eDb6" as Address;
-export const BOUNTY_FUNDER_ADDRESS = "0x6a17477B5C394cf3720dBe97b3Ea34a2B64af3f4" as Address;
+export const BOUNTY_HELPER_ADDRESS = "0xF88CA555751f5CDa616b1d97282c9fddA07dD913" as Address;
 /** Address that receives excess tokens from compound operations (leave empty to use signer address) */
 export const BENEFICIARY_ADDRESS = "" as Address;
 
