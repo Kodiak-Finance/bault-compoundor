@@ -54,6 +54,8 @@ export const RETRY_INTERVAL = Number(getEnvVar("RETRY_INTERVAL")) || 10 * 1000;
 export const MAX_RETRIES = Number(getEnvVar("MAX_RETRIES")) || 0;
 /** Slippage for estimating WBERA reward value in staking-token terms */
 export const WRAPPER_SLIPPAGE_BPS = Number(getEnvVar("WRAPPER_SLIPPAGE_BPS")) || 100; //(100 = 0.1%)
+/** Decimal scale used when converting token prices to bigint */
+export const PRICE_SCALE_DECIMALS = 18;
 
 
 export const RESTRICT_BAULTS = false;

@@ -16,14 +16,13 @@ import {
   ONLY_BAULT_ADDRESSES,
   ONLY_STAKING_TOKEN_ADDRESSES,
   WRAPPER_SLIPPAGE_BPS,
+  PRICE_SCALE_DECIMALS,
 } from "./configuration";
 import {
   BaultFromKodiakBackend,
   BaultCompleteData,
 } from "./types";
 import { BAULT_ABI } from "./abis/Bault";
-
-const PRICE_SCALE_DECIMALS = 18;
 
 function toScaledPrice(price: number): bigint {
   if (!Number.isFinite(price) || price <= 0) {
