@@ -215,7 +215,7 @@ async function getGasFeeParams(): Promise<{
       rewardPercentiles: [50],
     });
     const baseFee = gasFeeData.baseFeePerGas[0];
-    const priorityFee = parseGwei("0.1");
+    const priorityFee = parseGwei("1");
     const maxFee = baseFee * 10n + priorityFee;
 
     return { maxFee, priorityFee };
