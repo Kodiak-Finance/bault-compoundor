@@ -6,7 +6,7 @@ export type BaultOnchainData = {
     symbol: string;
     bounty: bigint;
     stakingTokenPrice: number | undefined;
-    earnedBgt: bigint;
+    earnedRewardAmount: bigint;
     onlyAllowedBgtWrapper: Address;
     error?: string;
 };
@@ -17,7 +17,7 @@ export type BaultCompleteData = {
     bault: Address;
     symbol: string;
     bounty: bigint;
-    earnedBgt: bigint;
+    earnedRewardAmount: bigint;
     onlyAllowedBgtWrapper: Address;
     wrapper: Address;
     wrapperMintAmount: bigint;
@@ -41,22 +41,5 @@ export type CompoundResult = {
 
 export type RetryInfo = {
     count: number;
-    originalEarnedBgt: bigint;
+    originalEarnedRewardAmount: bigint;
 };
-
-/**
- * Input for batch wrapper preview
- */
-export interface BatchWrapperPreviewInput {
-    baultAddress: Address;
-    wrappers: Address[];
-}
-
-/**
- * Output from batch wrapper preview
- */
-export interface BatchWrapperPreviewOutput {
-    wrapperMintAmounts: bigint[];
-    earned: bigint;
-    hasAnyFailure: boolean; // Track if any call failed for this bault
-}

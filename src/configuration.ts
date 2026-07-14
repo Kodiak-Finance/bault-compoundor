@@ -27,18 +27,11 @@ export const RPC_URL = getEnvVar("RPC_URL");
 export const ENSO_API_KEY = getEnvVar("ENSO_API_KEY");
 export const PRIVATE_KEY = getEnvVar("PRIVATE_KEY") as Hex | undefined;
 
-// BGT Wrapper Contract Addresses
-export const LBGT = "0xBaadCC2962417C01Af99fb2B7C75706B9bd6Babe";
-export const iBGT = "0xac03CABA51e17c86c921E1f6CBFBdC91F8BB2E6b";
 export const WBERA = "0x6969696969696969696969696969696969696969";
-
-export const ONLY_ALLOW_DEFAULT_WRAPPER = false;  // will find the best wrapper for the bault if set to false, otherwise will only use the default wrapper.
-export const DEFAULT_BGT_WRAPPER_ADDRESS = iBGT as Address; // The default wrapper address to use if ONLY_ALLOW_DEFAULT_WRAPPER is true
 
 // Contract Addresses for Compounding
 /** BountyHelper contract for executing compound transactions */
-export const BOUNTY_HELPER_ADDRESS = "0x4a19d3107F81aAa55202264f2c246aA75734eDb6" as Address;
-export const BOUNTY_FUNDER_ADDRESS = "0x6a17477B5C394cf3720dBe97b3Ea34a2B64af3f4" as Address;
+export const BOUNTY_HELPER_ADDRESS = "0xF88CA555751f5CDa616b1d97282c9fddA07dD913" as Address;
 /** Address that receives excess tokens from compound operations (leave empty to use signer address) */
 export const BENEFICIARY_ADDRESS = "" as Address;
 
@@ -51,16 +44,18 @@ export const MAX_COMPOUND_SLIPPAGE_BPS = 100;
 export const SLIPPAGE_INCREMENT_PER_RETRY = 15;
 
 // Bot Operation Configuration
-/** Minimum BGT earnings required to attempt compounding */
-export const MIN_EARNINGS_BGT = "1";
+/** Minimum earned reward amount required to attempt compounding */
+export const MIN_EARNED_REWARD_AMOUNT = "5";
 /** Interval between main loop executions in milliseconds */
 export const LOOP_INTERVAL = Number(getEnvVar("LOOP_INTERVAL")) || 20 * 1000;
 /** Delay between retry attempts in milliseconds */
 export const RETRY_INTERVAL = Number(getEnvVar("RETRY_INTERVAL")) || 10 * 1000;
 /** Maximum number of retry attempts per bault */
 export const MAX_RETRIES = Number(getEnvVar("MAX_RETRIES")) || 0;
-/** Slippage for accounting swapping a wrapper to wbera  */
+/** Slippage for estimating WBERA reward value in staking-token terms */
 export const WRAPPER_SLIPPAGE_BPS = Number(getEnvVar("WRAPPER_SLIPPAGE_BPS")) || 100; //(100 = 0.1%)
+/** Decimal scale used when converting token prices to bigint */
+export const PRICE_SCALE_DECIMALS = 18;
 
 
 export const RESTRICT_BAULTS = false;
@@ -70,4 +65,3 @@ export const ONLY_BAULT_ADDRESSES = [
 
 export const RESTRICT_STAKING_TOKENS = false;
 export const ONLY_STAKING_TOKEN_ADDRESSES: string[] = []
-
