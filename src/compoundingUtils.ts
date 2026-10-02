@@ -48,7 +48,8 @@ export async function getBaultsFromKodiakBackend(): Promise<BaultFromKodiakBacke
       if (
         island.provider === "kodiak" &&
         island.id &&
-        island.baults.length > 0
+        island.baults.length > 0 &&
+        island.farm.isActive
       ) {
         if (RESTRICT_BAULTS && !ONLY_BAULT_ADDRESSES.includes(island.baults[0].id.toLowerCase())) {
           return acc;
